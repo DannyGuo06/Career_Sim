@@ -1,0 +1,16 @@
+# Python
+venv/
+backend/venv/
+__pycache__/
+*.pyc
+
+# Node
+frontend/node_modules/
+
+# Env files (IMPORTANT)
+.env
+backend/.env
+frontend/.env
+
+# Mac
+.DS_Store
