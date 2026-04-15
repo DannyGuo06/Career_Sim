@@ -32,42 +32,113 @@ CAREER_CONFIG = {
     },
 }
 
+# Decision effects applied at the decision year and carried forward via pending_modifiers.
+# Each modifier entry: {"stress_delta": int, "happiness_delta": int, "ttl": int}
+# "happiness_followup" adds a +1 happiness modifier starting the year AFTER the decision year.
+DECISION_EFFECTS = {
+    "promotion": {
+        "income_mult": 1.20,
+        "modifiers": [{"stress_delta": 2, "happiness_delta": -1, "ttl": 2}],
+    },
+    "stay": {
+        "income_mult": 1.05,
+        "modifiers": [{"stress_delta": 0, "happiness_delta": 1, "ttl": 1}],
+    },
+    "switch_company": {
+        "income_mult": 1.15,
+        "modifiers": [
+            {"stress_delta": 3, "happiness_delta": 0, "ttl": 1},
+            {"stress_delta": 0, "happiness_delta": 1, "ttl": 1, "delay": 1},
+        ],
+    },
+}
+
 
 def _career_title(career: str, year: int) -> str:
     titles = CAREER_CONFIG[career]["titles"]
-    # Advance every ~3 years: years 1-3 → title 0, 4-6 → 1, 7-9 → 2, 10 → 3
     idx = min((year - 1) // 3, len(titles) - 1)
     return titles[idx]
 
 
-def compute_years(career: str, ambition: int, risk_tolerance: int) -> list[dict]:
+def compute_years(
+    career: str,
+    ambition: int,
+    risk_tolerance: int,
+    start_year: int = 1,
+    prev_income: float | None = None,
+    prev_stress: int | None = None,
+    applied_decision: str | None = None,
+) -> list[dict]:
     cfg = CAREER_CONFIG[career]
-    income = float(cfg["base_income"])
-    stress = cfg["base_stress"]
-    happiness = cfg["base_happiness"]
-    # Ambition boosts growth by +1% per point above 5
     ambition_bonus = max(0, ambition - 5) * 0.01
     growth_rate = cfg["base_growth"] + ambition_bonus
 
+    # Initialise state from previous year or career defaults
+    if prev_income is None:
+        income = float(cfg["base_income"])
+    else:
+        income = prev_income
+
+    if prev_stress is None:
+        stress = cfg["base_stress"]
+    else:
+        stress = prev_stress
+
+    # Build pending modifiers from the applied decision (if any).
+    # "delay" means the modifier kicks in after N years (used for switch_company follow-up).
+    pending_modifiers: list[dict] = []
+    if applied_decision and applied_decision in DECISION_EFFECTS:
+        effects = DECISION_EFFECTS[applied_decision]
+        income = income * effects["income_mult"]
+        for m in effects["modifiers"]:
+            pending_modifiers.append({
+                "stress_delta": m["stress_delta"],
+                "happiness_delta": m["happiness_delta"],
+                "ttl": m["ttl"],
+                "delay": m.get("delay", 0),
+            })
+
     years = []
-    for y in range(1, 11):
-        # Income growth
-        if career == "startup":
-            # Startup variance: risk_tolerance controls swing size (0–50%)
-            max_swing = risk_tolerance * 0.05
-            swing = random.uniform(-max_swing, max_swing * 1.5)
-            income *= 1 + growth_rate + swing
+    for y in range(start_year, 11):
+        # Income growth for this year (skip the multiplier already applied on decision year)
+        if y == start_year and applied_decision:
+            # Income was already multiplied above; just apply the regular growth on top
+            if career == "startup":
+                max_swing = risk_tolerance * 0.05
+                swing = random.uniform(-max_swing, max_swing * 1.5)
+                income *= 1 + growth_rate + swing
+            else:
+                income *= 1 + growth_rate
         else:
-            income *= 1 + growth_rate
+            if career == "startup":
+                max_swing = risk_tolerance * 0.05
+                swing = random.uniform(-max_swing, max_swing * 1.5)
+                income *= 1 + growth_rate + swing
+            else:
+                income *= 1 + growth_rate
 
         income = max(20_000, income)
 
-        # Stress drift ±1 per year, clamped 1–10
-        stress_drift = random.choice([-1, 0, 0, 1])
-        stress = max(1, min(10, stress + stress_drift))
+        # Accumulate active modifier deltas (skip delayed ones)
+        mod_stress = 0
+        mod_happiness = 0
+        next_modifiers = []
+        for m in pending_modifiers:
+            if m["delay"] > 0:
+                next_modifiers.append({**m, "delay": m["delay"] - 1})
+                continue
+            mod_stress += m["stress_delta"]
+            mod_happiness += m["happiness_delta"]
+            if m["ttl"] > 1:
+                next_modifiers.append({**m, "ttl": m["ttl"] - 1})
+        pending_modifiers = next_modifiers
 
-        # Happiness inversely tied to stress, with some randomness
-        happiness = max(1, min(10, 11 - stress + random.randint(-1, 1)))
+        # Stress drift ±1 per year, then apply modifier, clamped 1–10
+        stress_drift = random.choice([-1, 0, 0, 1])
+        stress = max(1, min(10, stress + stress_drift + mod_stress))
+
+        # Happiness inversely tied to stress, with modifier and randomness
+        happiness = max(1, min(10, 11 - stress + random.randint(-1, 1) + mod_happiness))
 
         years.append({
             "year": y,
@@ -84,18 +155,19 @@ async def generate_narratives(
     years: list[dict], career: str, location: str
 ) -> list[str]:
     career_label = {"ib": "investment banking", "swe": "software engineering", "startup": "startup founder"}[career]
+    n = len(years)
 
     years_summary = "\n".join(
         f"Year {y['year']}: {y['career_title']} in {career_label}, income ${y['income']:,}, stress {y['stress']}/10, happiness {y['happiness']}/10"
         for y in years
     )
 
-    prompt = f"""You are a creative life simulator. Given a 10-year career trajectory for someone in {location}, generate a short, vivid 1-sentence life event for each year that reflects their career stage, income, and wellbeing. Make events realistic and varied — include professional milestones, personal moments, and setbacks.
+    prompt = f"""You are a creative life simulator. Given a career trajectory for someone in {location}, generate a short, vivid 1-sentence life event for each year that reflects their career stage, income, and wellbeing. Make events realistic and varied — include professional milestones, personal moments, and setbacks.
 
 Trajectory:
 {years_summary}
 
-Return ONLY a valid JSON array of exactly 10 strings, one per year, in order. No other text."""
+Return ONLY a valid JSON array of exactly {n} strings, one per year, in order. No other text."""
 
     response = await client.chat.completions.create(
         model="gpt-4o-mini",
@@ -106,18 +178,15 @@ Return ONLY a valid JSON array of exactly 10 strings, one per year, in order. No
     )
 
     raw = response.choices[0].message.content
-    # The model returns {"events": [...]} or similar — handle both shapes
     parsed = json.loads(raw)
     if isinstance(parsed, list):
         events = parsed
     else:
-        # Find the first list value
         events = next(v for v in parsed.values() if isinstance(v, list))
 
-    # Ensure we have exactly 10
-    while len(events) < 10:
+    while len(events) < n:
         events.append("Another year passes quietly.")
-    return events[:10]
+    return events[:n]
 
 
 async def simulate(career: str, ambition: int, risk_tolerance: int, location: str) -> list[dict]:
@@ -125,4 +194,31 @@ async def simulate(career: str, ambition: int, risk_tolerance: int, location: st
     narratives = await generate_narratives(years, career, location)
     for i, year in enumerate(years):
         year["life_event"] = narratives[i]
+        year["decision"] = None
+        year["is_locked"] = False
+    return years
+
+
+async def recompute_from_decision(
+    decision_year: int,
+    decision: str,
+    career: str,
+    ambition: int,
+    risk_tolerance: int,
+    location: str,
+    prev_income: float,
+    prev_stress: int,
+) -> list[dict]:
+    years = compute_years(
+        career, ambition, risk_tolerance,
+        start_year=decision_year,
+        prev_income=prev_income,
+        prev_stress=prev_stress,
+        applied_decision=decision,
+    )
+    narratives = await generate_narratives(years, career, location)
+    for i, year in enumerate(years):
+        year["life_event"] = narratives[i]
+        year["decision"] = decision if year["year"] == decision_year else None
+        year["is_locked"] = year["year"] == decision_year
     return years

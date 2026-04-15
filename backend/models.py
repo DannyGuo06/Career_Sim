@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text
+from sqlalchemy import Boolean, Column, Integer, String, ForeignKey, DateTime, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from database import Base
@@ -31,5 +31,7 @@ class TimelineYear(Base):
     happiness = Column(Integer, nullable=False)
     career_title = Column(String, nullable=False)
     life_event = Column(Text, nullable=False)
+    decision = Column(String, nullable=True)
+    is_locked = Column(Boolean, nullable=False, default=False)
 
     timeline = relationship("Timeline", back_populates="years")
