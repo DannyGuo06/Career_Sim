@@ -23,7 +23,7 @@ const DECISION_OPTIONS = [
   {
     value: "promotion",
     label: "Push for Promotion",
-    desc: "Income +20%, stress spikes for 2 years, happiness -1",
+    desc: "Income +20%, stress spikes for 2 years, happiness −1",
   },
   {
     value: "stay",
@@ -41,6 +41,29 @@ const DECISION_LABELS: Record<string, string> = {
   promotion: "Pushed for Promotion",
   stay: "Stayed the Course",
   switch_company: "Switched Companies",
+};
+
+/* ─── Shared style tokens ─── */
+const CARD: React.CSSProperties = {
+  background: "#ffffff",
+  borderRadius: 12,
+  boxShadow: "rgba(0, 0, 0, 0.10) 0px 2px 20px 0px",
+  padding: "20px 24px",
+};
+
+const LABEL_SM: React.CSSProperties = {
+  fontSize: 12,
+  fontWeight: 400,
+  letterSpacing: "-0.12px",
+  color: "rgba(0, 0, 0, 0.40)",
+  marginBottom: 3,
+};
+
+const VALUE_SM: React.CSSProperties = {
+  fontSize: 14,
+  fontWeight: 500,
+  letterSpacing: "-0.224px",
+  color: "#1d1d1f",
 };
 
 export default function TimelineView({ timeline: initialTimeline }: { timeline: TimelineData }) {
@@ -85,146 +108,306 @@ export default function TimelineView({ timeline: initialTimeline }: { timeline: 
   const lastYear = timeline.years[timeline.years.length - 1];
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      {/* Header */}
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
         <div>
-          <h1 className="text-2xl font-bold">{CAREER_LABELS[timeline.career]} Timeline</h1>
-          <p className="text-gray-400 mt-1 text-sm">
+          <h1
+            style={{
+              fontSize: 28,
+              fontWeight: 600,
+              lineHeight: 1.14,
+              letterSpacing: "-0.2px",
+              color: "#1d1d1f",
+              margin: 0,
+              fontFamily: "'SF Pro Display', 'Helvetica Neue', Helvetica, Arial, sans-serif",
+            }}
+          >
+            {CAREER_LABELS[timeline.career]} Timeline
+          </h1>
+          <p style={{ marginTop: 6, fontSize: 14, letterSpacing: "-0.224px", color: "rgba(0,0,0,0.48)" }}>
             {timeline.location} &middot; Ambition {timeline.ambition}/10 &middot; Risk {timeline.risk_tolerance}/10
           </p>
         </div>
         {timeline.is_complete && (
           <button
             onClick={() => setShowBranchModal(true)}
-            className="rounded-lg bg-indigo-600 hover:bg-indigo-500 px-4 py-2 text-sm font-semibold transition-colors"
+            style={{
+              background: "transparent",
+              border: "1px solid #0066cc",
+              borderRadius: 980,
+              padding: "7px 16px",
+              fontSize: 14,
+              fontWeight: 400,
+              letterSpacing: "-0.224px",
+              color: "#0066cc",
+              cursor: "pointer",
+              transition: "background 0.15s ease",
+              fontFamily: "inherit",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(0,102,204,0.06)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
           >
-            Branch Timeline
+            Branch Timeline ›
           </button>
         )}
       </div>
 
       {/* Wallet Banner */}
       {lastYear && (
-        <div className="rounded-lg bg-gray-800 border border-gray-700 px-4 py-3 flex items-center justify-between">
-          <span className="text-sm text-gray-400">Wallet</span>
-          <span className="text-lg font-bold text-emerald-400">
-            ${lastYear.wallet.toLocaleString()}
-          </span>
+        <div
+          style={{
+            background: "#ffffff",
+            borderRadius: 12,
+            boxShadow: "rgba(0,0,0,0.10) 0px 2px 20px 0px",
+            padding: "16px 24px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.04em", color: "rgba(0,0,0,0.38)", textTransform: "uppercase" }}>
+              Wallet Balance
+            </div>
+            <div
+              style={{
+                fontSize: 28,
+                fontWeight: 600,
+                letterSpacing: "-0.2px",
+                color: "#1d1d1f",
+                marginTop: 2,
+                fontFamily: "'SF Pro Display', 'Helvetica Neue', Helvetica, Arial, sans-serif",
+              }}
+            >
+              ${lastYear.wallet.toLocaleString()}
+            </div>
+          </div>
+          <div
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: "50%",
+              background: "rgba(52, 199, 89, 0.12)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 22,
+            }}
+          >
+            💰
+          </div>
         </div>
       )}
 
       {/* Year Cards */}
-      <div className="grid gap-3">
-        {timeline.years.map((y) => (
-          <div
-            key={y.year}
-            className={`rounded-xl bg-gray-900 border p-4 ${
-              y.is_locked ? "border-gray-800" : "border-indigo-800"
-            }`}
-          >
-            <div className="flex flex-wrap items-start gap-x-6 gap-y-2">
-              <div className="w-14 shrink-0">
-                <div className="text-xs text-gray-500">Year</div>
-                <div className="text-xl font-bold text-indigo-400">{y.year}</div>
-              </div>
-              <div className="shrink-0">
-                <div className="text-xs text-gray-500">Title</div>
-                <div className="text-sm font-medium">{y.career_title}</div>
-              </div>
-              <div className="shrink-0">
-                <div className="text-xs text-gray-500">Income</div>
-                <div className="text-sm font-medium">${y.income.toLocaleString()}</div>
-              </div>
-              <StatBar label="Stress" value={y.stress} color="bg-red-500" />
-              <StatBar label="Happiness" value={y.happiness} color="bg-emerald-500" />
-              <div className="w-full mt-1">
-                <p className="text-sm text-gray-300 italic">&ldquo;{y.life_event}&rdquo;</p>
-              </div>
-              <div className="w-full mt-2 grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1 text-xs border-t border-gray-800 pt-2">
-                <div>
-                  <div className="text-gray-500">Gross Income</div>
-                  <div className="font-medium text-gray-300">${y.gross_income.toLocaleString()}</div>
-                </div>
-                <div>
-                  <div className="text-gray-500">Tax (27%)</div>
-                  <div className="font-medium text-red-400">−${y.tax_paid.toLocaleString()}</div>
-                </div>
-                <div>
-                  <div className="text-gray-500">Net Income</div>
-                  <div className="font-medium text-gray-300">${y.net_income.toLocaleString()}</div>
-                </div>
-                <div>
-                  <div className="text-gray-500">Wallet Total</div>
-                  <div className="font-medium text-emerald-400">${y.wallet.toLocaleString()}</div>
-                </div>
-              </div>
-              {y.decision && (
-                <div className="w-full">
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-900 border border-indigo-700 text-indigo-300 font-medium">
-                    You chose: {DECISION_LABELS[y.decision] ?? y.decision}
-                  </span>
-                </div>
-              )}
-              {y.available_decisions.length > 0 && (
-                <div className="w-full mt-2 space-y-2">
-                  <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide">
-                    What do you do next?
-                  </p>
-                  <div className="flex flex-col gap-2 sm:flex-row">
-                    {DECISION_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.value}
-                        onClick={() => handleAdvance(opt.value)}
-                        disabled={advancing}
-                        className="flex-1 text-left rounded-lg border border-gray-700 hover:border-indigo-600 hover:bg-gray-800 px-3 py-2.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                      >
-                        <div className="text-sm font-semibold">{opt.label}</div>
-                        <div className="text-xs text-gray-400 mt-0.5">{opt.desc}</div>
-                      </button>
-                    ))}
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {timeline.years.map((y) => {
+          const isActive = y.available_decisions.length > 0;
+          return (
+            <div
+              key={y.year}
+              style={{
+                ...CARD,
+                ...(isActive
+                  ? { boxShadow: "rgba(0, 113, 227, 0.15) 0px 0px 0px 2px, rgba(0,0,0,0.08) 0px 2px 20px 0px" }
+                  : {}),
+              }}
+            >
+              {/* Top row */}
+              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: "12px 24px" }}>
+                {/* Year number */}
+                <div style={{ width: 48, flexShrink: 0 }}>
+                  <div style={LABEL_SM}>Year</div>
+                  <div
+                    style={{
+                      fontSize: 24,
+                      fontWeight: 700,
+                      letterSpacing: "-0.2px",
+                      color: "#0071e3",
+                      fontFamily: "'SF Pro Display', 'Helvetica Neue', Helvetica, Arial, sans-serif",
+                    }}
+                  >
+                    {y.year}
                   </div>
-                  {advancing && (
-                    <p className="text-xs text-indigo-400 animate-pulse">
-                      Simulating Year {timeline.years.length + 1} of 10...
-                    </p>
-                  )}
                 </div>
-              )}
+
+                {/* Title */}
+                <div style={{ flexShrink: 0 }}>
+                  <div style={LABEL_SM}>Title</div>
+                  <div style={VALUE_SM}>{y.career_title}</div>
+                </div>
+
+                {/* Income */}
+                <div style={{ flexShrink: 0 }}>
+                  <div style={LABEL_SM}>Income</div>
+                  <div style={VALUE_SM}>${y.income.toLocaleString()}</div>
+                </div>
+
+                {/* Stat bars */}
+                <StatBar label="Stress" value={y.stress} color="#ff3b30" />
+                <StatBar label="Happiness" value={y.happiness} color="#34c759" />
+
+                {/* Life event */}
+                <div style={{ width: "100%", marginTop: 4 }}>
+                  <p
+                    style={{
+                      fontSize: 14,
+                      lineHeight: 1.5,
+                      letterSpacing: "-0.224px",
+                      color: "rgba(0,0,0,0.56)",
+                      fontStyle: "italic",
+                      margin: 0,
+                    }}
+                  >
+                    &ldquo;{y.life_event}&rdquo;
+                  </p>
+                </div>
+
+                {/* Financials breakdown */}
+                <div
+                  style={{
+                    width: "100%",
+                    marginTop: 8,
+                    paddingTop: 12,
+                    borderTop: "1px solid rgba(0,0,0,0.06)",
+                    display: "grid",
+                    gridTemplateColumns: "repeat(4, 1fr)",
+                    gap: "8px 16px",
+                  }}
+                >
+                  <FinRow label="Gross Income" value={`$${y.gross_income.toLocaleString()}`} />
+                  <FinRow label="Tax (27%)" value={`−$${y.tax_paid.toLocaleString()}`} valueColor="#ff3b30" />
+                  <FinRow label="Net Income" value={`$${y.net_income.toLocaleString()}`} />
+                  <FinRow label="Wallet Total" value={`$${y.wallet.toLocaleString()}`} valueColor="#34c759" />
+                </div>
+
+                {/* Decision badge */}
+                {y.decision && (
+                  <div style={{ width: "100%" }}>
+                    <span
+                      style={{
+                        display: "inline-block",
+                        fontSize: 12,
+                        fontWeight: 500,
+                        letterSpacing: "-0.12px",
+                        color: "#0071e3",
+                        background: "rgba(0,113,227,0.08)",
+                        padding: "3px 10px",
+                        borderRadius: 980,
+                      }}
+                    >
+                      {DECISION_LABELS[y.decision] ?? y.decision}
+                    </span>
+                  </div>
+                )}
+
+                {/* Decision buttons */}
+                {y.available_decisions.length > 0 && (
+                  <div style={{ width: "100%", marginTop: 4 }}>
+                    <p
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 600,
+                        letterSpacing: "0.06em",
+                        color: "rgba(0,0,0,0.36)",
+                        textTransform: "uppercase",
+                        marginBottom: 10,
+                      }}
+                    >
+                      What do you do next?
+                    </p>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                      {DECISION_OPTIONS.map((opt) => (
+                        <DecisionButton
+                          key={opt.value}
+                          label={opt.label}
+                          desc={opt.desc}
+                          disabled={advancing}
+                          onClick={() => handleAdvance(opt.value)}
+                        />
+                      ))}
+                    </div>
+                    {advancing && (
+                      <p
+                        style={{
+                          marginTop: 10,
+                          fontSize: 12,
+                          letterSpacing: "-0.12px",
+                          color: "#0071e3",
+                        }}
+                      >
+                        Simulating Year {timeline.years.length + 1} of 10…
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {/* Journey Complete card + Chart — revealed after Year 10 */}
+      {/* Journey Complete + Chart */}
       {timeline.is_complete && lastYear && (
         <>
-          <div className="rounded-xl bg-gradient-to-br from-indigo-950 to-gray-900 border border-indigo-700 p-6 space-y-4">
-            <h2 className="text-lg font-bold text-indigo-300">Journey Complete</h2>
-            <p className="text-sm text-gray-400">10 years simulated. Here&rsquo;s where you ended up:</p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <Stat label="Final Title" value={lastYear.career_title} />
-              <Stat label="Final Income" value={`$${lastYear.income.toLocaleString()}`} />
-              <Stat label="Stress" value={`${lastYear.stress}/10`} />
-              <Stat label="Happiness" value={`${lastYear.happiness}/10`} />
+          <div
+            style={{
+              background: "#1d1d1f",
+              borderRadius: 18,
+              padding: "32px 28px",
+              boxShadow: "rgba(0,0,0,0.22) 3px 5px 30px 0px",
+            }}
+          >
+            <h2
+              style={{
+                fontSize: 21,
+                fontWeight: 600,
+                letterSpacing: "-0.2px",
+                color: "#ffffff",
+                margin: "0 0 6px",
+                fontFamily: "'SF Pro Display', 'Helvetica Neue', Helvetica, Arial, sans-serif",
+              }}
+            >
+              Journey Complete
+            </h2>
+            <p style={{ fontSize: 14, letterSpacing: "-0.224px", color: "rgba(255,255,255,0.56)", marginBottom: 24 }}>
+              10 years simulated. Here&rsquo;s where you ended up:
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 20 }}>
+              <StatCard label="Final Title" value={lastYear.career_title} />
+              <StatCard label="Final Income" value={`$${lastYear.income.toLocaleString()}`} />
+              <StatCard label="Stress" value={`${lastYear.stress}/10`} />
+              <StatCard label="Happiness" value={`${lastYear.happiness}/10`} />
             </div>
           </div>
 
-          <div className="rounded-xl bg-gray-900 border border-gray-800 p-4">
-            <h2 className="text-sm font-semibold text-gray-400 mb-4">10-Year Journey</h2>
+          <div
+            style={{
+              background: "#ffffff",
+              borderRadius: 12,
+              boxShadow: "rgba(0,0,0,0.10) 0px 2px 20px 0px",
+              padding: "20px 24px",
+            }}
+          >
+            <h2 style={{ fontSize: 14, fontWeight: 600, letterSpacing: "-0.224px", color: "rgba(0,0,0,0.40)", marginBottom: 16, margin: "0 0 16px" }}>
+              10-Year Journey
+            </h2>
             <ResponsiveContainer width="100%" height={240}>
               <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="year" tick={{ fill: "#9ca3af", fontSize: 12 }} />
-                <YAxis yAxisId="income" orientation="left" tick={{ fill: "#9ca3af", fontSize: 12 }} label={{ value: "Income ($k)", angle: -90, position: "insideLeft", fill: "#6b7280", fontSize: 11 }} />
-                <YAxis yAxisId="score" orientation="right" domain={[0, 10]} tick={{ fill: "#9ca3af", fontSize: 12 }} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
+                <XAxis dataKey="year" tick={{ fill: "rgba(0,0,0,0.40)", fontSize: 12 }} axisLine={false} tickLine={false} />
+                <YAxis yAxisId="income" orientation="left" tick={{ fill: "rgba(0,0,0,0.40)", fontSize: 12 }} axisLine={false} tickLine={false} label={{ value: "Income ($k)", angle: -90, position: "insideLeft", fill: "rgba(0,0,0,0.32)", fontSize: 11 }} />
+                <YAxis yAxisId="score" orientation="right" domain={[0, 10]} tick={{ fill: "rgba(0,0,0,0.40)", fontSize: 12 }} axisLine={false} tickLine={false} />
                 <Tooltip
-                  contentStyle={{ backgroundColor: "#1f2937", border: "1px solid #374151", borderRadius: 8 }}
-                  labelStyle={{ color: "#e5e7eb" }}
+                  contentStyle={{ backgroundColor: "#ffffff", border: "none", borderRadius: 8, boxShadow: "rgba(0,0,0,0.14) 0px 4px 20px" }}
+                  labelStyle={{ color: "#1d1d1f", fontWeight: 600, fontSize: 13 }}
+                  itemStyle={{ fontSize: 13, color: "#1d1d1f" }}
                 />
-                <Legend wrapperStyle={{ color: "#9ca3af", fontSize: 12 }} />
-                <Line yAxisId="income" type="monotone" dataKey="income" name="Income ($k)" stroke="#6366f1" strokeWidth={2} dot={false} />
-                <Line yAxisId="score" type="monotone" dataKey="happiness" name="Happiness" stroke="#34d399" strokeWidth={2} dot={false} />
-                <Line yAxisId="score" type="monotone" dataKey="stress" name="Stress" stroke="#f87171" strokeWidth={2} dot={false} />
+                <Legend wrapperStyle={{ fontSize: 12, color: "rgba(0,0,0,0.48)" }} />
+                <Line yAxisId="income" type="monotone" dataKey="income" name="Income ($k)" stroke="#0071e3" strokeWidth={2} dot={false} />
+                <Line yAxisId="score" type="monotone" dataKey="happiness" name="Happiness" stroke="#34c759" strokeWidth={2} dot={false} />
+                <Line yAxisId="score" type="monotone" dataKey="stress" name="Stress" stroke="#ff3b30" strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -233,32 +416,111 @@ export default function TimelineView({ timeline: initialTimeline }: { timeline: 
 
       {/* Branch Modal */}
       {showBranchModal && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 w-full max-w-sm space-y-5">
-            <h2 className="text-lg font-bold">Branch Timeline</h2>
-            <p className="text-sm text-gray-400">Choose a different career to simulate an alternate path with the same traits.</p>
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.50)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 50,
+            padding: 24,
+          }}
+        >
+          <div
+            style={{
+              background: "#ffffff",
+              borderRadius: 18,
+              padding: "32px 28px",
+              width: "100%",
+              maxWidth: 380,
+              boxShadow: "rgba(0,0,0,0.22) 3px 5px 30px 0px",
+              display: "flex",
+              flexDirection: "column",
+              gap: 20,
+            }}
+          >
+            <div>
+              <h2
+                style={{
+                  fontSize: 21,
+                  fontWeight: 600,
+                  letterSpacing: "-0.2px",
+                  color: "#1d1d1f",
+                  margin: "0 0 6px",
+                  fontFamily: "'SF Pro Display', 'Helvetica Neue', Helvetica, Arial, sans-serif",
+                }}
+              >
+                Branch Timeline
+              </h2>
+              <p style={{ fontSize: 14, letterSpacing: "-0.224px", color: "rgba(0,0,0,0.48)", margin: 0 }}>
+                Choose a different career to simulate an alternate path with the same traits.
+              </p>
+            </div>
             <select
               value={newCareer}
               onChange={(e) => setNewCareer(e.target.value)}
-              className="w-full rounded-lg bg-gray-800 border border-gray-700 px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              style={{
+                width: "100%",
+                borderRadius: 11,
+                background: "#fafafc",
+                border: "2px solid rgba(0,0,0,0.06)",
+                padding: "10px 14px",
+                fontSize: 17,
+                letterSpacing: "-0.374px",
+                color: "#1d1d1f",
+                outline: "none",
+                fontFamily: "inherit",
+              }}
             >
               {CAREERS.filter((c) => c.value !== timeline.career).map((c) => (
                 <option key={c.value} value={c.value}>{c.label}</option>
               ))}
             </select>
-            <div className="flex gap-3">
+            <div style={{ display: "flex", gap: 12 }}>
               <button
                 onClick={() => setShowBranchModal(false)}
-                className="flex-1 rounded-lg border border-gray-700 px-4 py-2 text-sm hover:bg-gray-800 transition-colors"
+                style={{
+                  flex: 1,
+                  background: "transparent",
+                  border: "1px solid rgba(0,0,0,0.18)",
+                  borderRadius: 8,
+                  padding: "10px 16px",
+                  fontSize: 17,
+                  letterSpacing: "-0.374px",
+                  color: "#1d1d1f",
+                  cursor: "pointer",
+                  transition: "background 0.15s ease",
+                  fontFamily: "inherit",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(0,0,0,0.04)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
               >
                 Cancel
               </button>
               <button
                 onClick={handleBranch}
                 disabled={branching}
-                className="flex-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 px-4 py-2 text-sm font-semibold transition-colors"
+                style={{
+                  flex: 1,
+                  background: branching ? "rgba(0,113,227,0.5)" : "#0071e3",
+                  border: "none",
+                  borderRadius: 8,
+                  padding: "10px 16px",
+                  fontSize: 17,
+                  letterSpacing: "-0.374px",
+                  color: "#ffffff",
+                  cursor: branching ? "not-allowed" : "pointer",
+                  transition: "background 0.2s ease",
+                  fontFamily: "inherit",
+                }}
+                onMouseEnter={(e) => { if (!branching) e.currentTarget.style.background = "#0077ed"; }}
+                onMouseLeave={(e) => { if (!branching) e.currentTarget.style.background = "#0071e3"; }}
               >
-                {branching ? "Branching..." : "Create Branch"}
+                {branching ? "Branching…" : "Create Branch"}
               </button>
             </div>
           </div>
@@ -268,22 +530,108 @@ export default function TimelineView({ timeline: initialTimeline }: { timeline: 
   );
 }
 
+function DecisionButton({
+  label,
+  desc,
+  disabled,
+  onClick,
+}: {
+  label: string;
+  desc: string;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        flex: "1 1 180px",
+        textAlign: "left",
+        background: hovered && !disabled ? "rgba(0,113,227,0.04)" : "#fafafc",
+        border: `1px solid ${hovered && !disabled ? "#0071e3" : "rgba(0,0,0,0.10)"}`,
+        borderRadius: 11,
+        padding: "12px 14px",
+        cursor: disabled ? "not-allowed" : "pointer",
+        opacity: disabled ? 0.4 : 1,
+        transition: "border-color 0.15s ease, background 0.15s ease",
+        fontFamily: "inherit",
+      }}
+    >
+      <div
+        style={{
+          fontSize: 14,
+          fontWeight: 600,
+          letterSpacing: "-0.224px",
+          color: hovered && !disabled ? "#0071e3" : "#1d1d1f",
+          transition: "color 0.15s ease",
+        }}
+      >
+        {label}
+      </div>
+      <div
+        style={{
+          fontSize: 12,
+          letterSpacing: "-0.12px",
+          color: "rgba(0,0,0,0.48)",
+          marginTop: 3,
+          lineHeight: 1.4,
+        }}
+      >
+        {desc}
+      </div>
+    </button>
+  );
+}
+
 function StatBar({ label, value, color }: { label: string; value: number; color: string }) {
   return (
-    <div className="shrink-0 w-28">
-      <div className="text-xs text-gray-500 mb-1">{label} {value}/10</div>
-      <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
-        <div className={`h-full ${color} rounded-full`} style={{ width: `${value * 10}%` }} />
+    <div style={{ flexShrink: 0, width: 112 }}>
+      <div style={{ ...LABEL_SM, marginBottom: 5 }}>
+        {label} {value}/10
+      </div>
+      <div style={{ height: 4, background: "rgba(0,0,0,0.08)", borderRadius: 2, overflow: "hidden" }}>
+        <div style={{ height: "100%", width: `${value * 10}%`, background: color, borderRadius: 2, transition: "width 0.4s ease" }} />
       </div>
     </div>
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function FinRow({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
   return (
     <div>
-      <div className="text-xs text-gray-500">{label}</div>
-      <div className="text-sm font-semibold text-white mt-0.5">{value}</div>
+      <div style={LABEL_SM}>{label}</div>
+      <div style={{ ...VALUE_SM, ...(valueColor ? { color: valueColor } : {}) }}>{value}</div>
+    </div>
+  );
+}
+
+function StatCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div
+      style={{
+        background: "rgba(255,255,255,0.08)",
+        borderRadius: 10,
+        padding: "14px 16px",
+      }}
+    >
+      <div style={{ fontSize: 12, letterSpacing: "-0.12px", color: "rgba(255,255,255,0.48)", marginBottom: 4 }}>
+        {label}
+      </div>
+      <div
+        style={{
+          fontSize: 17,
+          fontWeight: 600,
+          letterSpacing: "-0.374px",
+          color: "#ffffff",
+        }}
+      >
+        {value}
+      </div>
     </div>
   );
 }
