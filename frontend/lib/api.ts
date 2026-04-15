@@ -7,6 +7,9 @@ export interface YearData {
   happiness: number;
   career_title: string;
   life_event: string;
+  decision: string | null;
+  is_locked: boolean;
+  available_decisions: string[];
 }
 
 export interface TimelineData {
@@ -56,4 +59,7 @@ export const api = {
 
   compare: (id1: string, id2: string) =>
     get<CompareData>(`/compare/${id1}/${id2}`),
+
+  decision: (body: { timeline_id: string; year: number; decision: string }) =>
+    post<TimelineData>("/decision", body),
 };
