@@ -54,10 +54,12 @@ DECISION_EFFECTS = {
 }
 
 
-def _career_title(career: str, year: int) -> str:
+def _title_idx_from_title(career: str, title: str) -> int:
     titles = CAREER_CONFIG[career]["titles"]
-    idx = min((year - 1) // 3, len(titles) - 1)
-    return titles[idx]
+    try:
+        return titles.index(title)
+    except ValueError:
+        return 0
 
 
 def compute_years(
@@ -68,6 +70,7 @@ def compute_years(
     prev_income: float | None = None,
     prev_stress: int | None = None,
     applied_decision: str | None = None,
+    current_title_idx: int = 0,
 ) -> list[dict]:
     cfg = CAREER_CONFIG[career]
     ambition_bonus = max(0, ambition - 5) * 0.01
@@ -83,6 +86,12 @@ def compute_years(
         stress = cfg["base_stress"]
     else:
         stress = prev_stress
+
+    # Apply the decision to advance (or hold) the career title.
+    titles = cfg["titles"]
+    if applied_decision == "promotion":
+        current_title_idx = min(current_title_idx + 1, len(titles) - 1)
+    # "stay" and "switch_company" keep the same title index.
 
     # Build pending modifiers from the applied decision (if any).
     # "delay" means the modifier kicks in after N years (used for switch_company follow-up).
@@ -145,7 +154,7 @@ def compute_years(
             "income": int(income),
             "stress": stress,
             "happiness": happiness,
-            "career_title": _career_title(career, y),
+            "career_title": titles[current_title_idx],
         })
 
     return years
@@ -208,13 +217,16 @@ async def recompute_from_decision(
     location: str,
     prev_income: float,
     prev_stress: int,
+    prev_title: str,
 ) -> list[dict]:
+    current_title_idx = _title_idx_from_title(career, prev_title)
     years = compute_years(
         career, ambition, risk_tolerance,
         start_year=decision_year,
         prev_income=prev_income,
         prev_stress=prev_stress,
         applied_decision=decision,
+        current_title_idx=current_title_idx,
     )
     narratives = await generate_narratives(years, career, location)
     for i, year in enumerate(years):

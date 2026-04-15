@@ -156,6 +156,7 @@ async def decision_endpoint(req: DecisionRequest, db: AsyncSession = Depends(get
         location=tl.location,
         prev_income=float(prev.income),
         prev_stress=prev.stress,
+        prev_title=prev.career_title,
     )
 
     for y in tl.years:
