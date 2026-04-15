@@ -8,10 +8,8 @@ from sqlalchemy.orm import selectinload
 
 from database import init_db, get_db
 from models import Timeline, TimelineYear
-from schemas import SimulateRequest, BranchRequest, DecisionRequest, TimelineOut, YearOut, CompareOut
+from schemas import SimulateRequest, BranchRequest, AdvanceRequest, TimelineOut, YearOut, CompareOut
 import simulation as sim
-
-DECISION_YEARS = {3, 6, 9}
 
 
 @asynccontextmanager
@@ -32,14 +30,12 @@ app.add_middleware(
 
 def _timeline_to_out(tl: Timeline) -> TimelineOut:
     years_sorted = sorted(tl.years, key=lambda y: y.year)
-    locked_set = {y.year for y in years_sorted if y.is_locked}
-
-    prereq_met = {3: True, 6: 3 in locked_set, 9: 6 in locked_set}
+    max_year = max((y.year for y in years_sorted), default=0)
 
     year_outs = []
     for y in years_sorted:
         available = []
-        if y.year in DECISION_YEARS and not y.is_locked and prereq_met[y.year]:
+        if y.year == max_year and not tl.is_complete and max_year < 10:
             available = ["promotion", "stay", "switch_company"]
         year_outs.append(YearOut(
             year=y.year,
@@ -49,7 +45,7 @@ def _timeline_to_out(tl: Timeline) -> TimelineOut:
             career_title=y.career_title,
             life_event=y.life_event,
             decision=y.decision,
-            is_locked=y.is_locked,
+            is_locked=(y.year != max_year),
             available_decisions=available,
         ))
 
@@ -61,6 +57,7 @@ def _timeline_to_out(tl: Timeline) -> TimelineOut:
         location=tl.location,
         parent_id=tl.parent_id,
         created_at=tl.created_at,
+        is_complete=tl.is_complete,
         years=year_outs,
     )
 
@@ -77,22 +74,51 @@ async def _fetch_timeline(timeline_id: UUID, db: AsyncSession) -> Timeline:
     return tl
 
 
-async def _create_timeline(
-    career: str,
-    ambition: int,
-    risk_tolerance: int,
-    location: str,
-    parent_id,
-    db: AsyncSession,
-) -> TimelineOut:
-    years_data = await sim.simulate(career, ambition, risk_tolerance, location)
+@app.post("/simulate", response_model=TimelineOut)
+async def simulate_endpoint(req: SimulateRequest, db: AsyncSession = Depends(get_db)):
+    year_data = await sim.simulate(
+        career=req.career,
+        ambition=req.ambition,
+        risk_tolerance=req.risk_tolerance,
+        location=req.location,
+    )
 
     timeline = Timeline(
-        career=career,
-        ambition=ambition,
-        risk_tolerance=risk_tolerance,
-        location=location,
-        parent_id=parent_id,
+        career=req.career,
+        ambition=req.ambition,
+        risk_tolerance=req.risk_tolerance,
+        location=req.location,
+        parent_id=None,
+        is_complete=False,
+    )
+    db.add(timeline)
+    await db.flush()
+
+    db.add(TimelineYear(timeline_id=timeline.id, **year_data))
+    await db.commit()
+
+    tl = await _fetch_timeline(timeline.id, db)
+    return _timeline_to_out(tl)
+
+
+@app.post("/branch", response_model=TimelineOut)
+async def branch_endpoint(req: BranchRequest, db: AsyncSession = Depends(get_db)):
+    parent = await _fetch_timeline(req.timeline_id, db)
+
+    years_data = await sim.simulate_all(
+        career=req.new_career,
+        ambition=parent.ambition,
+        risk_tolerance=parent.risk_tolerance,
+        location=parent.location,
+    )
+
+    timeline = Timeline(
+        career=req.new_career,
+        ambition=parent.ambition,
+        risk_tolerance=parent.risk_tolerance,
+        location=parent.location,
+        parent_id=parent.id,
+        is_complete=True,
     )
     db.add(timeline)
     await db.flush()
@@ -101,71 +127,63 @@ async def _create_timeline(
         db.add(TimelineYear(timeline_id=timeline.id, **y))
 
     await db.commit()
-    await db.refresh(timeline)
 
     tl = await _fetch_timeline(timeline.id, db)
     return _timeline_to_out(tl)
 
 
-@app.post("/simulate", response_model=TimelineOut)
-async def simulate_endpoint(req: SimulateRequest, db: AsyncSession = Depends(get_db)):
-    return await _create_timeline(
-        career=req.career,
-        ambition=req.ambition,
-        risk_tolerance=req.risk_tolerance,
-        location=req.location,
-        parent_id=None,
-        db=db,
-    )
-
-
-@app.post("/branch", response_model=TimelineOut)
-async def branch_endpoint(req: BranchRequest, db: AsyncSession = Depends(get_db)):
-    parent = await _fetch_timeline(req.timeline_id, db)
-    return await _create_timeline(
-        career=req.new_career,
-        ambition=parent.ambition,
-        risk_tolerance=parent.risk_tolerance,
-        location=parent.location,
-        parent_id=parent.id,
-        db=db,
-    )
-
-
-@app.post("/decision", response_model=TimelineOut)
-async def decision_endpoint(req: DecisionRequest, db: AsyncSession = Depends(get_db)):
+@app.post("/advance", response_model=TimelineOut)
+async def advance_endpoint(req: AdvanceRequest, db: AsyncSession = Depends(get_db)):
     tl = await _fetch_timeline(req.timeline_id, db)
-    year_map = {y.year: y for y in tl.years}
 
-    if req.year not in DECISION_YEARS:
-        raise HTTPException(status_code=400, detail=f"Year {req.year} is not a decision point")
-    if year_map[req.year].is_locked:
-        raise HTTPException(status_code=400, detail=f"Year {req.year} has already been decided")
-    if req.year == 6 and not year_map[3].is_locked:
-        raise HTTPException(status_code=400, detail="Must decide year 3 before year 6")
-    if req.year == 9 and not year_map[6].is_locked:
-        raise HTTPException(status_code=400, detail="Must decide year 6 before year 9")
+    if tl.is_complete:
+        raise HTTPException(status_code=400, detail="Timeline is already complete")
 
-    prev = year_map[req.year - 1]
-    new_years = await sim.recompute_from_decision(
-        decision_year=req.year,
+    years_sorted = sorted(tl.years, key=lambda y: y.year)
+    if not years_sorted:
+        raise HTTPException(status_code=400, detail="No years found on this timeline")
+
+    latest = years_sorted[-1]
+    if latest.year >= 10:
+        raise HTTPException(status_code=400, detail="Timeline is already at year 10")
+
+    # Stamp the decision onto the current latest year before generating the next
+    latest.decision = req.decision
+    db.add(latest)
+    await db.flush()
+
+    prev_years_for_context = [
+        {
+            "year": y.year,
+            "career_title": y.career_title,
+            "income": y.income,
+            "stress": y.stress,
+            "happiness": y.happiness,
+            "life_event": y.life_event,
+        }
+        for y in years_sorted
+    ]
+
+    next_year_num = latest.year + 1
+    year_data = await sim.advance_year(
+        next_year_num=next_year_num,
         decision=req.decision,
         career=tl.career,
         ambition=tl.ambition,
         risk_tolerance=tl.risk_tolerance,
         location=tl.location,
-        prev_income=float(prev.income),
-        prev_stress=prev.stress,
-        prev_title=prev.career_title,
+        prev_income=latest.income,
+        prev_stress=latest.stress,
+        prev_title_idx=latest.title_idx,
+        prev_modifiers_json=latest.pending_modifiers,
+        prev_years_for_context=prev_years_for_context,
     )
 
-    for y in tl.years:
-        if y.year >= req.year:
-            await db.delete(y)
-    await db.flush()
+    db.add(TimelineYear(timeline_id=tl.id, **year_data))
 
-    for y in new_years:
-        db.add(TimelineYear(timeline_id=tl.id, **y))
+    if next_year_num == 10:
+        tl.is_complete = True
+        db.add(tl)
 
     await db.commit()
 

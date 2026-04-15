@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -38,9 +38,9 @@ const DECISION_OPTIONS = [
 ];
 
 const DECISION_LABELS: Record<string, string> = {
-  promotion: "Promoted",
-  stay: "Stayed",
-  switch_company: "Switched",
+  promotion: "Pushed for Promotion",
+  stay: "Stayed the Course",
+  switch_company: "Switched Companies",
 };
 
 export default function TimelineView({ timeline: initialTimeline }: { timeline: TimelineData }) {
@@ -49,9 +49,7 @@ export default function TimelineView({ timeline: initialTimeline }: { timeline: 
   const [showBranchModal, setShowBranchModal] = useState(false);
   const [newCareer, setNewCareer] = useState("ib");
   const [branching, setBranching] = useState(false);
-  const [decisionYear, setDecisionYear] = useState<number | null>(null);
-  const [decidingYear, setDecidingYear] = useState(false);
-  const submittingRef = useRef(false);
+  const [advancing, setAdvancing] = useState(false);
 
   const chartData = timeline.years.map((y) => ({
     year: `Y${y.year}`,
@@ -71,29 +69,20 @@ export default function TimelineView({ timeline: initialTimeline }: { timeline: 
     }
   }
 
-  async function handleDecision(year: number, decision: string) {
-    if (submittingRef.current) return;
-    submittingRef.current = true;
-    setDecidingYear(true);
+  async function handleAdvance(decision: string) {
+    if (advancing) return;
+    setAdvancing(true);
     try {
-      const updated = await api.decision({ timeline_id: timeline.id, year, decision });
+      const updated = await api.advance({ timeline_id: timeline.id, decision });
       setTimeline(updated);
-      setDecisionYear(null);
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      if (message.includes("already been decided")) {
-        // Duplicate request — year was already committed; just sync local state
-        const fresh = await api.getTimeline(timeline.id);
-        setTimeline(fresh);
-        setDecisionYear(null);
-      } else {
-        alert("Decision failed. Please try again.");
-      }
+      alert(`Advance failed: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
-      submittingRef.current = false;
-      setDecidingYear(false);
+      setAdvancing(false);
     }
   }
+
+  const lastYear = timeline.years[timeline.years.length - 1];
 
   return (
     <div className="space-y-8">
@@ -104,33 +93,14 @@ export default function TimelineView({ timeline: initialTimeline }: { timeline: 
             {timeline.location} &middot; Ambition {timeline.ambition}/10 &middot; Risk {timeline.risk_tolerance}/10
           </p>
         </div>
-        <button
-          onClick={() => setShowBranchModal(true)}
-          className="rounded-lg bg-indigo-600 hover:bg-indigo-500 px-4 py-2 text-sm font-semibold transition-colors"
-        >
-          Branch Timeline
-        </button>
-      </div>
-
-      {/* Chart */}
-      <div className="rounded-xl bg-gray-900 border border-gray-800 p-4">
-        <h2 className="text-sm font-semibold text-gray-400 mb-4">10-Year Projection</h2>
-        <ResponsiveContainer width="100%" height={240}>
-          <LineChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-            <XAxis dataKey="year" tick={{ fill: "#9ca3af", fontSize: 12 }} />
-            <YAxis yAxisId="income" orientation="left" tick={{ fill: "#9ca3af", fontSize: 12 }} label={{ value: "Income ($k)", angle: -90, position: "insideLeft", fill: "#6b7280", fontSize: 11 }} />
-            <YAxis yAxisId="score" orientation="right" domain={[0, 10]} tick={{ fill: "#9ca3af", fontSize: 12 }} />
-            <Tooltip
-              contentStyle={{ backgroundColor: "#1f2937", border: "1px solid #374151", borderRadius: 8 }}
-              labelStyle={{ color: "#e5e7eb" }}
-            />
-            <Legend wrapperStyle={{ color: "#9ca3af", fontSize: 12 }} />
-            <Line yAxisId="income" type="monotone" dataKey="income" name="Income ($k)" stroke="#6366f1" strokeWidth={2} dot={false} />
-            <Line yAxisId="score" type="monotone" dataKey="happiness" name="Happiness" stroke="#34d399" strokeWidth={2} dot={false} />
-            <Line yAxisId="score" type="monotone" dataKey="stress" name="Stress" stroke="#f87171" strokeWidth={2} dot={false} />
-          </LineChart>
-        </ResponsiveContainer>
+        {timeline.is_complete && (
+          <button
+            onClick={() => setShowBranchModal(true)}
+            className="rounded-lg bg-indigo-600 hover:bg-indigo-500 px-4 py-2 text-sm font-semibold transition-colors"
+          >
+            Branch Timeline
+          </button>
+        )}
       </div>
 
       {/* Year Cards */}
@@ -138,8 +108,8 @@ export default function TimelineView({ timeline: initialTimeline }: { timeline: 
         {timeline.years.map((y) => (
           <div
             key={y.year}
-            className={`rounded-xl bg-gray-900 border p-4 transition-opacity ${
-              y.is_locked ? "border-gray-800" : "border-dashed border-gray-700 opacity-80"
+            className={`rounded-xl bg-gray-900 border p-4 ${
+              y.is_locked ? "border-gray-800" : "border-indigo-800"
             }`}
           >
             <div className="flex flex-wrap items-start gap-x-6 gap-y-2">
@@ -157,26 +127,81 @@ export default function TimelineView({ timeline: initialTimeline }: { timeline: 
               </div>
               <StatBar label="Stress" value={y.stress} color="bg-red-500" />
               <StatBar label="Happiness" value={y.happiness} color="bg-emerald-500" />
-              <div className="w-full mt-1 flex flex-wrap items-center gap-3">
-                <p className="text-sm text-gray-300 italic flex-1">&ldquo;{y.life_event}&rdquo;</p>
-                {y.decision && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-900 border border-indigo-700 text-indigo-300 font-medium shrink-0">
-                    {DECISION_LABELS[y.decision] ?? y.decision}
-                  </span>
-                )}
-                {y.available_decisions.length > 0 && (
-                  <button
-                    onClick={() => setDecisionYear(y.year)}
-                    className="shrink-0 text-xs px-3 py-1 rounded-lg bg-violet-700 hover:bg-violet-600 text-white font-semibold transition-colors"
-                  >
-                    Make Decision
-                  </button>
-                )}
+              <div className="w-full mt-1">
+                <p className="text-sm text-gray-300 italic">&ldquo;{y.life_event}&rdquo;</p>
               </div>
+              {y.decision && (
+                <div className="w-full">
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-900 border border-indigo-700 text-indigo-300 font-medium">
+                    You chose: {DECISION_LABELS[y.decision] ?? y.decision}
+                  </span>
+                </div>
+              )}
+              {y.available_decisions.length > 0 && (
+                <div className="w-full mt-2 space-y-2">
+                  <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide">
+                    What do you do next?
+                  </p>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    {DECISION_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => handleAdvance(opt.value)}
+                        disabled={advancing}
+                        className="flex-1 text-left rounded-lg border border-gray-700 hover:border-indigo-600 hover:bg-gray-800 px-3 py-2.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        <div className="text-sm font-semibold">{opt.label}</div>
+                        <div className="text-xs text-gray-400 mt-0.5">{opt.desc}</div>
+                      </button>
+                    ))}
+                  </div>
+                  {advancing && (
+                    <p className="text-xs text-indigo-400 animate-pulse">
+                      Simulating Year {timeline.years.length + 1} of 10...
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         ))}
       </div>
+
+      {/* Journey Complete card + Chart — revealed after Year 10 */}
+      {timeline.is_complete && lastYear && (
+        <>
+          <div className="rounded-xl bg-gradient-to-br from-indigo-950 to-gray-900 border border-indigo-700 p-6 space-y-4">
+            <h2 className="text-lg font-bold text-indigo-300">Journey Complete</h2>
+            <p className="text-sm text-gray-400">10 years simulated. Here&rsquo;s where you ended up:</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <Stat label="Final Title" value={lastYear.career_title} />
+              <Stat label="Final Income" value={`$${lastYear.income.toLocaleString()}`} />
+              <Stat label="Stress" value={`${lastYear.stress}/10`} />
+              <Stat label="Happiness" value={`${lastYear.happiness}/10`} />
+            </div>
+          </div>
+
+          <div className="rounded-xl bg-gray-900 border border-gray-800 p-4">
+            <h2 className="text-sm font-semibold text-gray-400 mb-4">10-Year Journey</h2>
+            <ResponsiveContainer width="100%" height={240}>
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                <XAxis dataKey="year" tick={{ fill: "#9ca3af", fontSize: 12 }} />
+                <YAxis yAxisId="income" orientation="left" tick={{ fill: "#9ca3af", fontSize: 12 }} label={{ value: "Income ($k)", angle: -90, position: "insideLeft", fill: "#6b7280", fontSize: 11 }} />
+                <YAxis yAxisId="score" orientation="right" domain={[0, 10]} tick={{ fill: "#9ca3af", fontSize: 12 }} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: "#1f2937", border: "1px solid #374151", borderRadius: 8 }}
+                  labelStyle={{ color: "#e5e7eb" }}
+                />
+                <Legend wrapperStyle={{ color: "#9ca3af", fontSize: 12 }} />
+                <Line yAxisId="income" type="monotone" dataKey="income" name="Income ($k)" stroke="#6366f1" strokeWidth={2} dot={false} />
+                <Line yAxisId="score" type="monotone" dataKey="happiness" name="Happiness" stroke="#34d399" strokeWidth={2} dot={false} />
+                <Line yAxisId="score" type="monotone" dataKey="stress" name="Stress" stroke="#f87171" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </>
+      )}
 
       {/* Branch Modal */}
       {showBranchModal && (
@@ -211,36 +236,6 @@ export default function TimelineView({ timeline: initialTimeline }: { timeline: 
           </div>
         </div>
       )}
-
-      {/* Decision Modal */}
-      {decisionYear !== null && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 w-full max-w-sm space-y-5">
-            <h2 className="text-lg font-bold">Year {decisionYear} Decision</h2>
-            <p className="text-sm text-gray-400">This is a career milestone. Choose your path — it will reshape your future years.</p>
-            <div className="space-y-3">
-              {DECISION_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => handleDecision(decisionYear, opt.value)}
-                  disabled={decidingYear}
-                  className="w-full text-left rounded-lg border border-gray-700 hover:border-indigo-600 hover:bg-gray-800 px-4 py-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <div className="text-sm font-semibold">{opt.label}</div>
-                  <div className="text-xs text-gray-400 mt-0.5">{opt.desc}</div>
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={() => setDecisionYear(null)}
-              disabled={decidingYear}
-              className="w-full rounded-lg border border-gray-700 px-4 py-2 text-sm hover:bg-gray-800 transition-colors disabled:opacity-50"
-            >
-              {decidingYear ? "Applying decision..." : "Cancel"}
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -252,6 +247,15 @@ function StatBar({ label, value, color }: { label: string; value: number; color:
       <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
         <div className={`h-full ${color} rounded-full`} style={{ width: `${value * 10}%` }} />
       </div>
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-xs text-gray-500">{label}</div>
+      <div className="text-sm font-semibold text-white mt-0.5">{value}</div>
     </div>
   );
 }

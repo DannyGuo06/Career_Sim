@@ -20,6 +20,7 @@ export interface TimelineData {
   location: string;
   parent_id: string | null;
   created_at: string;
+  is_complete: boolean;
   years: YearData[];
 }
 
@@ -60,6 +61,6 @@ export const api = {
   compare: (id1: string, id2: string) =>
     get<CompareData>(`/compare/${id1}/${id2}`),
 
-  decision: (body: { timeline_id: string; year: number; decision: string }) =>
-    post<TimelineData>("/decision", body),
+  advance: (body: { timeline_id: string; decision: string }) =>
+    post<TimelineData>("/advance", body),
 };

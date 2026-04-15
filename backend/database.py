@@ -25,6 +25,15 @@ async def init_db():
         await conn.execute(text(
             "ALTER TABLE timeline_years ADD COLUMN IF NOT EXISTS is_locked BOOLEAN NOT NULL DEFAULT FALSE"
         ))
+        await conn.execute(text(
+            "ALTER TABLE timelines ADD COLUMN IF NOT EXISTS is_complete BOOLEAN NOT NULL DEFAULT FALSE"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE timeline_years ADD COLUMN IF NOT EXISTS pending_modifiers TEXT"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE timeline_years ADD COLUMN IF NOT EXISTS title_idx INTEGER NOT NULL DEFAULT 0"
+        ))
 
 
 async def get_db():

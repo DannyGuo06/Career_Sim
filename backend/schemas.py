@@ -36,6 +36,11 @@ class DecisionRequest(BaseModel):
     decision: str = Field(..., pattern="^(promotion|stay|switch_company)$")
 
 
+class AdvanceRequest(BaseModel):
+    timeline_id: UUID
+    decision: str = Field(..., pattern="^(promotion|stay|switch_company)$")
+
+
 class TimelineOut(BaseModel):
     id: UUID
     ambition: int
@@ -44,6 +49,7 @@ class TimelineOut(BaseModel):
     location: str
     parent_id: Optional[UUID]
     created_at: datetime
+    is_complete: bool = False
     years: list[YearOut]
 
     model_config = {"from_attributes": True}
