@@ -35,6 +35,20 @@ CAREER_CONFIG = {
 # Decision effects applied at the decision year and carried forward via pending_modifiers.
 # Each modifier entry: {"stress_delta": int, "happiness_delta": int, "ttl": int}
 # "happiness_followup" adds a +1 happiness modifier starting the year AFTER the decision year.
+TAX_RATE = 0.27
+
+
+def _wallet_fields(gross_income: int, prev_wallet: int) -> dict:
+    tax_paid = int(gross_income * TAX_RATE)
+    net_income = gross_income - tax_paid
+    return {
+        "gross_income": gross_income,
+        "tax_paid": tax_paid,
+        "net_income": net_income,
+        "wallet": prev_wallet + net_income,
+    }
+
+
 DECISION_EFFECTS = {
     "promotion": {
         "income_mult": 1.20,
@@ -330,8 +344,10 @@ async def simulate(career: str, ambition: int, risk_tolerance: int, location: st
         incoming_modifiers=[],
     )
     narrative = await generate_single_narrative(year_data, career, location, prev_years=[])
+    wallet_data = _wallet_fields(year_data["income"], prev_wallet=0)
     return {
         **year_data,
+        **wallet_data,
         "life_event": narrative,
         "decision": None,
         "is_locked": False,
@@ -351,6 +367,7 @@ async def advance_year(
     prev_stress: int,
     prev_title_idx: int,
     prev_modifiers_json: str | None,
+    prev_wallet: int,
     prev_years_for_context: list[dict],
 ) -> dict:
     """Generate the next year based on the previous year's state and chosen decision."""
@@ -369,8 +386,10 @@ async def advance_year(
     narrative = await generate_single_narrative(
         year_data, career, location, prev_years=prev_years_for_context
     )
+    wallet_data = _wallet_fields(year_data["income"], prev_wallet=prev_wallet)
     return {
         **year_data,
+        **wallet_data,
         "life_event": narrative,
         "decision": None,
         "is_locked": False,
@@ -383,12 +402,16 @@ async def simulate_all(career: str, ambition: int, risk_tolerance: int, location
     """Generate all 10 years at once. Used by POST /branch."""
     years = compute_years(career, ambition, risk_tolerance)
     narratives = await generate_narratives(years, career, location)
+    wallet = 0
     for i, year in enumerate(years):
         year["life_event"] = narratives[i]
         year["decision"] = None
         year["is_locked"] = False
         year["pending_modifiers"] = None
         year["title_idx"] = 0
+        wf = _wallet_fields(year["income"], prev_wallet=wallet)
+        year.update(wf)
+        wallet = year["wallet"]
     return years
 
 

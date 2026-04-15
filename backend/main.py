@@ -47,6 +47,10 @@ def _timeline_to_out(tl: Timeline) -> TimelineOut:
             decision=y.decision,
             is_locked=(y.year != max_year),
             available_decisions=available,
+            gross_income=y.gross_income,
+            tax_paid=y.tax_paid,
+            net_income=y.net_income,
+            wallet=y.wallet,
         ))
 
     return TimelineOut(
@@ -176,6 +180,7 @@ async def advance_endpoint(req: AdvanceRequest, db: AsyncSession = Depends(get_d
         prev_stress=latest.stress,
         prev_title_idx=latest.title_idx,
         prev_modifiers_json=latest.pending_modifiers,
+        prev_wallet=latest.wallet,
         prev_years_for_context=prev_years_for_context,
     )
 

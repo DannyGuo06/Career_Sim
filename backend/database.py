@@ -34,6 +34,18 @@ async def init_db():
         await conn.execute(text(
             "ALTER TABLE timeline_years ADD COLUMN IF NOT EXISTS title_idx INTEGER NOT NULL DEFAULT 0"
         ))
+        await conn.execute(text(
+            "ALTER TABLE timeline_years ADD COLUMN IF NOT EXISTS gross_income INTEGER NOT NULL DEFAULT 0"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE timeline_years ADD COLUMN IF NOT EXISTS tax_paid INTEGER NOT NULL DEFAULT 0"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE timeline_years ADD COLUMN IF NOT EXISTS net_income INTEGER NOT NULL DEFAULT 0"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE timeline_years ADD COLUMN IF NOT EXISTS wallet INTEGER NOT NULL DEFAULT 0"
+        ))
 
 
 async def get_db():

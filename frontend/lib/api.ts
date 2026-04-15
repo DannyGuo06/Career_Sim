@@ -10,6 +10,10 @@ export interface YearData {
   decision: string | null;
   is_locked: boolean;
   available_decisions: string[];
+  gross_income: number;
+  tax_paid: number;
+  net_income: number;
+  wallet: number;
 }
 
 export interface TimelineData {

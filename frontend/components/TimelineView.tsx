@@ -103,6 +103,16 @@ export default function TimelineView({ timeline: initialTimeline }: { timeline: 
         )}
       </div>
 
+      {/* Wallet Banner */}
+      {lastYear && (
+        <div className="rounded-lg bg-gray-800 border border-gray-700 px-4 py-3 flex items-center justify-between">
+          <span className="text-sm text-gray-400">Wallet</span>
+          <span className="text-lg font-bold text-emerald-400">
+            ${lastYear.wallet.toLocaleString()}
+          </span>
+        </div>
+      )}
+
       {/* Year Cards */}
       <div className="grid gap-3">
         {timeline.years.map((y) => (
@@ -129,6 +139,24 @@ export default function TimelineView({ timeline: initialTimeline }: { timeline: 
               <StatBar label="Happiness" value={y.happiness} color="bg-emerald-500" />
               <div className="w-full mt-1">
                 <p className="text-sm text-gray-300 italic">&ldquo;{y.life_event}&rdquo;</p>
+              </div>
+              <div className="w-full mt-2 grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1 text-xs border-t border-gray-800 pt-2">
+                <div>
+                  <div className="text-gray-500">Gross Income</div>
+                  <div className="font-medium text-gray-300">${y.gross_income.toLocaleString()}</div>
+                </div>
+                <div>
+                  <div className="text-gray-500">Tax (27%)</div>
+                  <div className="font-medium text-red-400">−${y.tax_paid.toLocaleString()}</div>
+                </div>
+                <div>
+                  <div className="text-gray-500">Net Income</div>
+                  <div className="font-medium text-gray-300">${y.net_income.toLocaleString()}</div>
+                </div>
+                <div>
+                  <div className="text-gray-500">Wallet Total</div>
+                  <div className="font-medium text-emerald-400">${y.wallet.toLocaleString()}</div>
+                </div>
               </div>
               {y.decision && (
                 <div className="w-full">

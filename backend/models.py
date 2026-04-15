@@ -37,5 +37,9 @@ class TimelineYear(Base):
     is_locked = Column(Boolean, nullable=False, default=False)
     pending_modifiers = Column(Text, nullable=True)  # JSON: list[dict] of modifier state
     title_idx = Column(Integer, nullable=False, default=0)
+    gross_income = Column(Integer, nullable=False, default=0)
+    tax_paid = Column(Integer, nullable=False, default=0)
+    net_income = Column(Integer, nullable=False, default=0)
+    wallet = Column(Integer, nullable=False, default=0)
 
     timeline = relationship("Timeline", back_populates="years")

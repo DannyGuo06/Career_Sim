@@ -26,6 +26,10 @@ class YearOut(BaseModel):
     decision: Optional[str] = None
     is_locked: bool = False
     available_decisions: List[str] = []
+    gross_income: int = 0
+    tax_paid: int = 0
+    net_income: int = 0
+    wallet: int = 0
 
     model_config = {"from_attributes": True}
 
