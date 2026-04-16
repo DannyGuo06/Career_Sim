@@ -137,6 +137,9 @@ SQLAlchemy ORM models:
 ### Timeline Comparison
 - `/compare` endpoint supports side-by-side UI display
 
+### Used DESIGN.md
+- I used the design from DESIGN.md
+
 ---
 
 ## Future Improvements
