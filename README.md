@@ -19,17 +19,20 @@ This is an **AI-driven life simulation game**. Players choose their initial care
 backend setup
 1. Clone the repository and navigate into it.
 2. Create a `.env` file with:  
-
+```
 DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/lifesim 
-OPENAI_API_KEY=your_openai_key.  ( im learning how to make it so that this would not be exposed )
 
+OPENAI_API_KEY=your_openai_key.  ( im learning how to make it so that this would not be exposed )
+```
 3. Set up a Python virtual environment and install dependencies:
 ```bash
 pip install fastapi sqlalchemy asyncpg uvicorn python-dotenv openai
-
+```
 
 4. Start the FastAPI server:
+```
 uvicorn main:app --reload
+```
 On first run, the database tables will be created automatically (init_db()).
 
 Frontend setup
@@ -37,10 +40,13 @@ Frontend setup
 
 1. Navigate to the frontend/ directory.
 Install dependencies:
+```
 npm install
-
-2. Run the development server:
+```
+3. Run the development server:
+```
 npm run dev
+```
 Open http://localhost:3000 to view the app.
 
 
@@ -49,30 +55,20 @@ Open http://localhost:3000 to view the app.
 
 ### Start a New Simulation
 Enter your character’s attributes (ambition, risk tolerance, career, location).  
-This calls:
-POST /simulate
-
 
 ### Advance Years
 Each year, choose an action:
 - Promotion
 - Stay
 - Switch  
-This calls:
-POST /advance
-
 Stats and narrative update accordingly.
 
 ### Branch a Timeline
 At any point, you can branch and explore an alternate future with a different career.  
-This calls:
-POST /branch
-
 
 ### Compare Timelines
 Display two timelines side by side (original vs branch):  
 GET /compare/{id1}/{id2}
-
 
 ---
 
@@ -82,7 +78,6 @@ POST /branch → Create a branch from an existing timeline
 POST /advance → Advance one year with a decision
 GET /timeline/{id} → Get timeline data by ID
 GET /compare/{id1}/{id2} → Compare two timelines
-
 
 Refer to `main.py` for request/response formats.
 
@@ -127,7 +122,6 @@ SQLAlchemy ORM models:
 - +1 happiness (e.g., switching jobs) may not apply  
 - Likely issue in `compute_single_year`
 
-
 ---
 
 ## Design Notes
@@ -136,7 +130,7 @@ SQLAlchemy ORM models:
 - Fully async (FastAPI + DB + OpenAI)
 - Handles multiple simulations efficiently
 
-### Generative AI
+### AI
 - Uses OpenAI GPT model
 - Generates funny/relatable narrative "life events" each year
 
@@ -154,3 +148,10 @@ SQLAlchemy ORM models:
   - Charts
   - Animations
   - Better visual storytelling
+ 
+## Author 
+Danny Guo 
+
+dannyguo@g.ucla.edu | 801-819-8186
+
+UCLA — Mathematics/Economics (Specialization in Computing) + Data Science Engineering 
