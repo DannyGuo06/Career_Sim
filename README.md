@@ -5,9 +5,9 @@
 
 ## Project Description
 
-This is an **AI-driven life simulation game**. Players choose their initial career (Investment Banking, Software Engineer, or Startup founder), ambition, risk tolerance, and location. The game then simulates a 10-year career path, year by year. Each year, the player can make decisions (e.g. pursue a promotion, stay, or switch companies), and the system updates stats like income, stress, and happiness. The simulation uses OpenAI's GPT model to generate narrative events, adding creativity and variability.
+This is a very simple AI-driven simulation game inspired by career paths I’ve personally explored, (investment banking, software engineering, and startups). Players make decisions year by year over a 10-year period, with outcomes affecting things like income, stress, and happiness. The game uses OpenAI’s GPT model to generate events, making each run feel different.
 
-## Getting Started
+## Getting Started (what I have learned)
 
 ### Prerequisites
 
@@ -33,7 +33,7 @@ pip install fastapi sqlalchemy asyncpg uvicorn python-dotenv openai
 ```
 uvicorn main:app --reload
 ```
-On first run, the database tables will be created automatically (init_db()).
+On the first run, the database tables will be created automatically (init_db()).
 
 Frontend setup
 (Assuming a Next.js frontend)
@@ -54,7 +54,7 @@ Open http://localhost:3000 to view the app.
 ## Using it!! 
 
 ### Start a New Simulation
-Enter your character’s attributes (ambition, risk tolerance, career, location).  
+Enter your sim’s attributes (ambition, risk tolerance, career, location).  
 
 ### Advance Years
 Each year, choose an action:
