@@ -1,4 +1,4 @@
-# AI Life Simulator
+# AI Career Simulator
 
 **Version:** 1.0  
 **Tech Stack:** FastAPI (Python) backend, PostgreSQL database, Next.js frontend with Tailwind CSS.
